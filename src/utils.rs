@@ -3,7 +3,8 @@ use std::time::{Duration, Instant};
 
 use regex::{Captures, Regex};
 
-use console::{measure_text_width, Style};
+use console::{Style};
+use unicode_truncate::UnicodeTruncateStr;
 
 pub fn duration_to_secs(d: Duration) -> f64 {
     d.as_secs() as f64 + f64::from(d.subsec_nanos()) / 1_000_000_000f64
@@ -77,12 +78,7 @@ impl Estimate {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Copy, Clone)]
-pub enum Alignment {
-    Left,
-    Center,
-    Right,
-}
+pub use unicode_truncate::Alignment;
 
 #[derive(Debug)]
 pub struct TemplateVar<'a> {
@@ -179,33 +175,7 @@ pub fn expand_template<F: Fn(&TemplateVar<'_>) -> String>(s: &str, f: F) -> Cow<
 }
 
 pub fn pad_str(s: &str, width: usize, align: Alignment, truncate: bool) -> Cow<'_, str> {
-    let cols = measure_text_width(s);
-
-    if cols >= width {
-        return if truncate {
-            Cow::Borrowed(s.get(..width).unwrap_or(s))
-        } else {
-            Cow::Borrowed(s)
-        };
-    }
-
-    let diff = width.saturating_sub(cols);
-
-    let (left_pad, right_pad) = match align {
-        Alignment::Left => (0, diff),
-        Alignment::Right => (diff, 0),
-        Alignment::Center => (diff / 2, diff.saturating_sub(diff / 2)),
-    };
-
-    let mut rv = String::new();
-    for _ in 0..left_pad {
-        rv.push(' ');
-    }
-    rv.push_str(s);
-    for _ in 0..right_pad {
-        rv.push(' ');
-    }
-    Cow::Owned(rv)
+    s.unicode_pad(width, align, truncate)
 }
 
 #[test]
